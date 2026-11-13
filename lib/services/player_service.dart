@@ -1837,6 +1837,33 @@ class PlayerService {
     return _sessionManager.syncRouteSelection(reason: reason);
   }
 
+  /// Saturation/upward compressor were toggled while a track plays: move it
+  /// onto the engine the route now selects (Rust <-> Standard) at the same
+  /// position, instead of waiting for the next track.
+  Future<void> reattachForRustOnlyDspChange() {
+    return _enqueuePlaybackRequest(() async {
+      final desired = _sessionManager.selectedMode;
+      final initialized = _sessionManager.initializedMode;
+      if (desired == initialized) return;
+      if (desired != AudioEngineType.rustOboe &&
+          initialized != AudioEngineType.rustOboe) {
+        return;
+      }
+      if (_castingService.isActive) return;
+      final song = currentSongNotifier.value;
+      if (song == null || !isPlayingNotifier.value) return;
+      _debugLog(
+        '[Engine] Re-attaching for saturation/upward change: '
+        '${initialized?.logLabel ?? 'none'} -> ${desired.logLabel}',
+      );
+      try {
+        await _resumeInternal();
+      } catch (e) {
+        _debugLog('[Engine] Re-attach after DSP change failed: $e');
+      }
+    });
+  }
+
   /// Re-arms the direct USB engine after a startup fallback and, when a track
   /// is playing, re-attaches playback to the exclusive path.
   Future<bool> retryDirectUsbForCurrentDevice() async {

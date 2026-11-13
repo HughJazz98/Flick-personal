@@ -32,14 +32,20 @@ Future<void> applyEqualizer(EqualizerState state) async {
       state.enabled &&
       (state.saturation.enabled || state.upwardCompressor.enabled);
   if (EqEngineHint.rustOnlyDspActive != wantsRustOnlyDsp) {
+    final firstApply = EqEngineHint.rustOnlyDspActive == null;
     EqEngineHint.rustOnlyDspActive = wantsRustOnlyDsp;
-    unawaited(
-      playerService.syncAudioRouteSelection(
+    unawaited(() async {
+      await playerService.syncAudioRouteSelection(
         reason: wantsRustOnlyDsp
             ? 'saturation/upward compressor enabled; Rust DSP required'
             : 'saturation/upward compressor disabled',
-      ),
-    );
+      );
+      // On the first apply at startup the route already used the persisted
+      // state; only a live toggle needs to move the playing track.
+      if (!firstApply) {
+        await playerService.reattachForRustOnlyDspChange();
+      }
+    }());
   }
   if (EqEngineHint.parametricPeqActive != wantsRustForParametricEq) {
     EqEngineHint.parametricPeqActive = wantsRustForParametricEq;

@@ -298,6 +298,7 @@ class AudioSessionManager {
       rust_audio.AudioCapabilityType.usbDac,
     );
     final looksLikeUsbAudioRoute = info.looksLikeUsbAudioRoute;
+    final rustOnlyDsp = await EqEngineHint.rustOnlyDspRequested();
 
     _debugLog(
       '[Session] Resolve inputs: route=${info.routeLabel ?? info.routeType ?? 'unknown'} '
@@ -344,8 +345,7 @@ class AudioSessionManager {
         info.hasUsbDac ||
         capabilityReportsUsb ||
         looksLikeUsbAudioRoute) {
-      if ((EqEngineHint.parametricPeqActive ||
-              EqEngineHint.rustOnlyDspActive) &&
+      if ((EqEngineHint.parametricPeqActive || rustOnlyDsp) &&
           !bitPerfectEnabled) {
         _debugLog(
           '[Session] Selected RUST_OBOE because parametric EQ, saturation or '
@@ -371,6 +371,17 @@ class AudioSessionManager {
           'audioManagerUsb=${info.hasUsbDac}; '
           'capabilityUsb=$capabilityReportsUsb; '
           'routeLooksUsb=$looksLikeUsbAudioRoute)',
+        );
+        return AudioEngineType.rustOboe;
+      }
+
+      if (audioEnginePreference != AudioEnginePreference.isochronousUsb &&
+          rustOnlyDsp) {
+        // Not taking the direct USB path anyway, so bit-perfect isn't on the
+        // table; saturation/upward need the Rust chain over the shared route.
+        _debugLog(
+          '[Session] Selected RUST_OBOE (shared) for the USB DAC because '
+          'saturation or the upward compressor is enabled',
         );
         return AudioEngineType.rustOboe;
       }
@@ -444,7 +455,7 @@ class AudioSessionManager {
       return AudioEngineType.rustOboe;
     }
 
-    if (EqEngineHint.rustOnlyDspActive) {
+    if (rustOnlyDsp) {
       _debugLog(
         '[Session] Selected RUST_OBOE because saturation or the upward '
         'compressor is enabled (Rust-only DSP)',
