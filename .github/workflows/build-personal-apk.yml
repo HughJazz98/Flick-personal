@@ -127,6 +127,15 @@ jobs:
         continue-on-error: true
         run: flutter test test/services/eq_preset_file_service_test.dart test/l10n
 
+      # rust/vendor/opus-sys runs bindgen without an Android sysroot, so
+      # clang falls back to the runner's glibc headers and fails. Point it at
+      # the NDK's sysroot for the arm64 target.
+      - name: Android sysroot for bindgen
+        run: |
+          NDK=$(ls -d "$ANDROID_HOME"/ndk/* | sort -V | tail -1)
+          echo "Using NDK $NDK"
+          echo "BINDGEN_EXTRA_CLANG_ARGS_aarch64_linux_android=--sysroot=$NDK/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> "$GITHUB_ENV"
+
       - name: Build APK
         run: flutter build apk --flavor full --release --target-platform android-arm64
 
