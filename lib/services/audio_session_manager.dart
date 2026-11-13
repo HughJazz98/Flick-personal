@@ -344,10 +344,12 @@ class AudioSessionManager {
         info.hasUsbDac ||
         capabilityReportsUsb ||
         looksLikeUsbAudioRoute) {
-      if (EqEngineHint.parametricPeqActive && !bitPerfectEnabled) {
+      if ((EqEngineHint.parametricPeqActive ||
+              EqEngineHint.rustOnlyDspActive) &&
+          !bitPerfectEnabled) {
         _debugLog(
-          '[Session] Selected RUST_OBOE because parametric EQ is enabled and '
-          'needs the variable-band DSP chain',
+          '[Session] Selected RUST_OBOE because parametric EQ, saturation or '
+          'the upward compressor is enabled and needs the Rust DSP chain',
         );
         return AudioEngineType.rustOboe;
       }
@@ -438,6 +440,14 @@ class AudioSessionManager {
       _debugLog(
         '[Session] Selected RUST_OBOE because the user prefers the Rust '
         'Android-managed engine',
+      );
+      return AudioEngineType.rustOboe;
+    }
+
+    if (EqEngineHint.rustOnlyDspActive) {
+      _debugLog(
+        '[Session] Selected RUST_OBOE because saturation or the upward '
+        'compressor is enabled (Rust-only DSP)',
       );
       return AudioEngineType.rustOboe;
     }

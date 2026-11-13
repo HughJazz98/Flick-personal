@@ -21,17 +21,26 @@ Future<void> applyEqualizer(EqualizerState state) async {
   // The fixed-band AudioEffect cannot render an arbitrary parametric curve, so
   // a parametric EQ with enabled bands asks the session manager for the Rust
   // variable-band engine. The engine attaches on the next playback request.
-  // Saturation and the upward compressor only exist in the Rust engine, so
-  // they ask for it the same way.
   final wantsRustForParametricEq =
       state.enabled &&
-      ((state.mode == EqMode.parametric &&
-              state.parametricBands.any(
-                (band) =>
-                    band.enabled && band.type != ParametricBandType.allPass,
-              )) ||
-          state.saturation.enabled ||
-          state.upwardCompressor.enabled);
+      state.mode == EqMode.parametric &&
+      state.parametricBands.any(
+        (band) => band.enabled && band.type != ParametricBandType.allPass,
+      );
+  // Saturation and the upward compressor only exist in the Rust engine.
+  final wantsRustOnlyDsp =
+      state.enabled &&
+      (state.saturation.enabled || state.upwardCompressor.enabled);
+  if (EqEngineHint.rustOnlyDspActive != wantsRustOnlyDsp) {
+    EqEngineHint.rustOnlyDspActive = wantsRustOnlyDsp;
+    unawaited(
+      playerService.syncAudioRouteSelection(
+        reason: wantsRustOnlyDsp
+            ? 'saturation/upward compressor enabled; Rust DSP required'
+            : 'saturation/upward compressor disabled',
+      ),
+    );
+  }
   if (EqEngineHint.parametricPeqActive != wantsRustForParametricEq) {
     EqEngineHint.parametricPeqActive = wantsRustForParametricEq;
     unawaited(
