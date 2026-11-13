@@ -1885,6 +1885,27 @@ pub fn audio_set_compressor(
     })
 }
 
+/// Configure the upward compressor for the native audio engine. It lifts
+/// passages quieter than `threshold_db` by up to `max_boost_db` and leaves
+/// louder material untouched.
+pub fn audio_set_upward_compressor(
+    enabled: bool,
+    threshold_db: f32,
+    ratio: f32,
+    max_boost_db: f32,
+    release_ms: f32,
+) -> Result<(), String> {
+    with_audio_engine(|handle| {
+        handle.set_upward_compressor(enabled, threshold_db, ratio, max_boost_db, release_ms)
+    })
+}
+
+/// Configure the soft saturation stage for the native audio engine.
+/// `drive` and `warmth` are both 0..1.
+pub fn audio_set_saturation(enabled: bool, drive: f32, warmth: f32) -> Result<(), String> {
+    with_audio_engine(|handle| handle.set_saturation(enabled, drive, warmth))
+}
+
 /// Configure limiter settings for the native audio engine.
 pub fn audio_set_limiter(
     enabled: bool,

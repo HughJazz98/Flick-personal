@@ -474,6 +474,8 @@ class _PresetsSheetState extends ConsumerState<_PresetsSheet> {
       ),
       compressor: s.compressor,
       limiter: s.limiter,
+      upwardCompressor: s.upwardCompressor,
+      saturation: s.saturation,
       fx: s.fx,
     );
   }
@@ -493,6 +495,8 @@ class _PresetsSheetState extends ConsumerState<_PresetsSheet> {
           trebleDb: preset.trebleDb,
           compressor: preset.compressor,
           limiter: preset.limiter,
+          upwardCompressor: preset.upwardCompressor,
+          saturation: preset.saturation,
           fx: preset.fx,
         );
     if (mounted) Navigator.of(context).pop();
@@ -569,6 +573,8 @@ class _PresetsSheetState extends ConsumerState<_PresetsSheet> {
             trebleDb: preset.trebleDb,
             compressor: preset.compressor,
             limiter: preset.limiter,
+            upwardCompressor: preset.upwardCompressor,
+            saturation: preset.saturation,
             fx: preset.fx,
           );
       if (imported.hasWarnings) {
@@ -3277,6 +3283,8 @@ class _DynamicsSection extends ConsumerWidget {
     final enabled = ref.watch(eqEnabledProvider);
     final compressor = ref.watch(eqCompressorProvider);
     final limiter = ref.watch(eqLimiterProvider);
+    final upward = ref.watch(eqUpwardCompressorProvider);
+    final saturation = ref.watch(eqSaturationProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -3326,6 +3334,123 @@ class _DynamicsSection extends ConsumerWidget {
           const SizedBox(height: AppConstants.spacingMd),
           const _ProcessingSupportNote(),
         ],
+        const SizedBox(height: AppConstants.spacingMd),
+        _DynamicsCard(
+          icon: LucideIcons.flame,
+          title: l10n.englishForFilipino.audioSaturation,
+          subtitle: l10n.audioSaturationSubtitle,
+          active: enabled && saturation.enabled,
+          toggleValue: saturation.enabled,
+          onToggleChanged: (value) =>
+              ref.read(equalizerProvider.notifier).setSaturationEnabled(value),
+          children: [
+            Wrap(
+              spacing: AppConstants.spacingMd,
+              runSpacing: AppConstants.spacingLg,
+              alignment: WrapAlignment.center,
+              children: [
+                _LabeledKnob(
+                  icon: LucideIcons.zap,
+                  label: l10n.englishForFilipino.saturationDrive,
+                  valueLabel: '${(saturation.drive * 100).round()}%',
+                  value: saturation.drive,
+                  min: EqualizerNotifier.saturationDriveMin,
+                  max: EqualizerNotifier.saturationDriveMax,
+                  onChanged: enabled && saturation.enabled
+                      ? (value) => ref
+                          .read(equalizerProvider.notifier)
+                          .setSaturationDrive(value)
+                      : null,
+                ),
+                _LabeledKnob(
+                  icon: LucideIcons.sparkles,
+                  label: l10n.englishForFilipino.saturationWarmth,
+                  valueLabel: '${(saturation.warmth * 100).round()}%',
+                  value: saturation.warmth,
+                  min: EqualizerNotifier.saturationWarmthMin,
+                  max: EqualizerNotifier.saturationWarmthMax,
+                  onChanged: enabled && saturation.enabled
+                      ? (value) => ref
+                          .read(equalizerProvider.notifier)
+                          .setSaturationWarmth(value)
+                      : null,
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: AppConstants.spacingMd),
+        _DynamicsCard(
+          icon: LucideIcons.chevronsUp,
+          title: l10n.englishForFilipino.upwardCompressor,
+          subtitle: l10n.upwardCompressorSubtitle,
+          active: enabled && upward.enabled,
+          toggleValue: upward.enabled,
+          onToggleChanged: (value) => ref
+              .read(equalizerProvider.notifier)
+              .setUpwardCompressorEnabled(value),
+          children: [
+            Wrap(
+              spacing: AppConstants.spacingMd,
+              runSpacing: AppConstants.spacingLg,
+              alignment: WrapAlignment.center,
+              children: [
+                _LabeledKnob(
+                  icon: LucideIcons.arrowUp,
+                  label: l10n.englishForFilipino.threshold,
+                  valueLabel: l10n.db10(upward.thresholdDb.toStringAsFixed(1)),
+                  value: upward.thresholdDb,
+                  min: EqualizerNotifier.upwardThresholdMinDb,
+                  max: EqualizerNotifier.upwardThresholdMaxDb,
+                  onChanged: enabled && upward.enabled
+                      ? (value) => ref
+                          .read(equalizerProvider.notifier)
+                          .setUpwardThresholdDb(value)
+                      : null,
+                ),
+                _LabeledKnob(
+                  icon: LucideIcons.ratio,
+                  label: l10n.englishForFilipino.ratio,
+                  valueLabel: '${upward.ratio.toStringAsFixed(1)}:1',
+                  value: upward.ratio,
+                  min: EqualizerNotifier.upwardRatioMin,
+                  max: EqualizerNotifier.upwardRatioMax,
+                  onChanged: enabled && upward.enabled
+                      ? (value) => ref
+                          .read(equalizerProvider.notifier)
+                          .setUpwardRatio(value)
+                      : null,
+                ),
+                _LabeledKnob(
+                  icon: LucideIcons.gauge,
+                  label: l10n.englishForFilipino.upwardMaxBoost,
+                  valueLabel: '+${upward.maxBoostDb.toStringAsFixed(1)} dB',
+                  value: upward.maxBoostDb,
+                  min: EqualizerNotifier.upwardMaxBoostMinDb,
+                  max: EqualizerNotifier.upwardMaxBoostMaxDb,
+                  onChanged: enabled && upward.enabled
+                      ? (value) => ref
+                          .read(equalizerProvider.notifier)
+                          .setUpwardMaxBoostDb(value)
+                      : null,
+                ),
+                _LabeledKnob(
+                  icon: LucideIcons.timerReset,
+                  label: l10n.englishForFilipino.release,
+                  valueLabel: l10n.ms3(upward.releaseMs.toStringAsFixed(0)),
+                  value: upward.releaseMs,
+                  min: EqualizerNotifier.upwardReleaseMinMs,
+                  max: EqualizerNotifier.upwardReleaseMaxMs,
+                  onChanged: enabled && upward.enabled
+                      ? (value) => ref
+                          .read(equalizerProvider.notifier)
+                          .setUpwardReleaseMs(value)
+                      : null,
+                ),
+              ],
+            ),
+          ],
+        ),
         const SizedBox(height: AppConstants.spacingMd),
         _DynamicsCard(
           icon: LucideIcons.activity,

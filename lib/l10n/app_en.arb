@@ -9663,6 +9663,34 @@
   "@smooth": {
     "description": "lib/features/settings/screens/visualizer_settings_screen.dart:177"
   },
+  "audioSaturation": "Saturation",
+  "@audioSaturation": {
+    "description": "lib/features/settings/screens/equalizer_screen.dart"
+  },
+  "audioSaturationSubtitle": "Rounds off preamp overs smoothly instead of hard clipping, with optional warmth.",
+  "@audioSaturationSubtitle": {
+    "description": "lib/features/settings/screens/equalizer_screen.dart"
+  },
+  "saturationDrive": "Drive",
+  "@saturationDrive": {
+    "description": "lib/features/settings/screens/equalizer_screen.dart"
+  },
+  "saturationWarmth": "Warmth",
+  "@saturationWarmth": {
+    "description": "lib/features/settings/screens/equalizer_screen.dart"
+  },
+  "upwardCompressor": "Upward compressor",
+  "@upwardCompressor": {
+    "description": "lib/features/settings/screens/equalizer_screen.dart"
+  },
+  "upwardCompressorSubtitle": "Lifts quiet passages so details come through, leaving loud parts alone.",
+  "@upwardCompressorSubtitle": {
+    "description": "lib/features/settings/screens/equalizer_screen.dart"
+  },
+  "upwardMaxBoost": "Max boost",
+  "@upwardMaxBoost": {
+    "description": "lib/features/settings/screens/equalizer_screen.dart"
+  },
   "smoothsPeaksAndRaisesBodyBefore": "Smooths peaks and raises body before the limiter catches transients.",
   "@smoothsPeaksAndRaisesBodyBefore": {
     "description": "lib/features/settings/screens/equalizer_screen.dart:3305"

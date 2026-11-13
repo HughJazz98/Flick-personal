@@ -106,4 +106,62 @@ Filter 2: ON PK Fc 1000 Hz Gain -2.0 dB Q 1.000
     expect(result.warnings, isEmpty);
     expect(result.preset.parametricBands.single.q, 8.0);
   });
+
+  test('JSON round-trips saturation and upward compressor settings', () {
+    final preset = EqPreset(
+      id: 'test',
+      name: 'Dynamics',
+      enabled: true,
+      mode: EqMode.graphic,
+      preampDb: 2.9,
+      graphicGainsDb: List<double>.filled(10, 0.0, growable: false),
+      parametricBands: const [],
+      upwardCompressor: const UpwardCompressorSettings(
+        enabled: true,
+        thresholdDb: -32.0,
+        ratio: 2.5,
+        maxBoostDb: 6.0,
+        releaseMs: 400.0,
+      ),
+      saturation: const SaturationSettings(
+        enabled: true,
+        drive: 0.4,
+        warmth: 0.2,
+      ),
+    );
+
+    final restored = service
+        .parseFileText(
+          text: jsonEncode(preset.toJson()),
+          fileName: 'dynamics.json',
+        )
+        .preset;
+
+    expect(restored.upwardCompressor.enabled, isTrue);
+    expect(restored.upwardCompressor.thresholdDb, -32.0);
+    expect(restored.upwardCompressor.ratio, 2.5);
+    expect(restored.upwardCompressor.maxBoostDb, 6.0);
+    expect(restored.upwardCompressor.releaseMs, 400.0);
+    expect(restored.saturation.enabled, isTrue);
+    expect(restored.saturation.drive, 0.4);
+    expect(restored.saturation.warmth, 0.2);
+  });
+
+  test('older JSON presets without the new sections load with them off', () {
+    final restored = service
+        .parseFileText(
+          text: jsonEncode({
+            'name': 'Old',
+            'enabled': true,
+            'mode': 'graphic',
+            'preampDb': 1.5,
+            'graphicGainsDb': List<double>.filled(10, 0.0),
+          }),
+          fileName: 'old.json',
+        )
+        .preset;
+
+    expect(restored.upwardCompressor.enabled, isFalse);
+    expect(restored.saturation.enabled, isFalse);
+  });
 }

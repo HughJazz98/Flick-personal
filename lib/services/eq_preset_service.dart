@@ -17,6 +17,8 @@ class EqPreset {
   final double trebleDb;
   final CompressorSettings compressor;
   final LimiterSettings limiter;
+  final UpwardCompressorSettings upwardCompressor;
+  final SaturationSettings saturation;
   final FxSettings fx;
 
   const EqPreset({
@@ -32,6 +34,8 @@ class EqPreset {
     this.trebleDb = 0.0,
     this.compressor = const CompressorSettings(),
     this.limiter = const LimiterSettings(),
+    this.upwardCompressor = const UpwardCompressorSettings(),
+    this.saturation = const SaturationSettings(),
     this.fx = const FxSettings(),
   });
 
@@ -48,6 +52,8 @@ class EqPreset {
     double? trebleDb,
     CompressorSettings? compressor,
     LimiterSettings? limiter,
+    UpwardCompressorSettings? upwardCompressor,
+    SaturationSettings? saturation,
     FxSettings? fx,
   }) {
     return EqPreset(
@@ -63,6 +69,8 @@ class EqPreset {
       trebleDb: trebleDb ?? this.trebleDb,
       compressor: compressor ?? this.compressor,
       limiter: limiter ?? this.limiter,
+      upwardCompressor: upwardCompressor ?? this.upwardCompressor,
+      saturation: saturation ?? this.saturation,
       fx: fx ?? this.fx,
     );
   }
@@ -102,6 +110,8 @@ class EqPreset {
       'ceilingDb': limiter.ceilingDb,
       'releaseMs': limiter.releaseMs,
     },
+    'upwardCompressor': upwardCompressor.toJson(),
+    'saturation': saturation.toJson(),
     'fx': {
       'enabled': fx.enabled,
       'balance': fx.balance,
@@ -151,6 +161,10 @@ class EqPreset {
         ?.cast<String, dynamic>();
     final limiterJson = (json['limiter'] as Map?)?.cast<String, dynamic>();
     final fxJson = (json['fx'] as Map?)?.cast<String, dynamic>();
+    final upwardJson = (json['upwardCompressor'] as Map?)
+        ?.cast<String, dynamic>();
+    final saturationJson = (json['saturation'] as Map?)
+        ?.cast<String, dynamic>();
 
     return EqPreset(
       id: (json['id'] as String?) ?? '',
@@ -189,6 +203,12 @@ class EqPreset {
         ceilingDb: (limiterJson?['ceilingDb'] as num?)?.toDouble() ?? -0.8,
         releaseMs: (limiterJson?['releaseMs'] as num?)?.toDouble() ?? 80.0,
       ),
+      upwardCompressor: upwardJson != null
+          ? UpwardCompressorSettings.fromJson(upwardJson)
+          : const UpwardCompressorSettings(),
+      saturation: saturationJson != null
+          ? SaturationSettings.fromJson(saturationJson)
+          : const SaturationSettings(),
       fx: FxSettings(
         enabled: (fxJson?['enabled'] as bool?) ?? false,
         balance: (fxJson?['balance'] as num?)?.toDouble() ?? 0.0,

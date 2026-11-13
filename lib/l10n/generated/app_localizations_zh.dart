@@ -6995,6 +6995,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get smooth => '平滑';
 
   @override
+  String get audioSaturation => '饱和';
+
+  @override
+  String get audioSaturationSubtitle => '平滑地削圆前级增益产生的过载峰值，而非硬削波，并可添加暖色泛音。';
+
+  @override
+  String get saturationDrive => '驱动';
+
+  @override
+  String get saturationWarmth => '暖度';
+
+  @override
+  String get upwardCompressor => '上行压缩器';
+
+  @override
+  String get upwardCompressorSubtitle => '提升安静段落，让细节更清晰，响亮部分保持不变。';
+
+  @override
+  String get upwardMaxBoost => '最大提升';
+
+  @override
   String get smoothsPeaksAndRaisesBodyBefore => '平滑峰值并增强厚实感，再由限制器处理瞬态。';
 
   @override

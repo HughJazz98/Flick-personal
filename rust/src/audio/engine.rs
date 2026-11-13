@@ -14,6 +14,7 @@ use crate::audio::decoder_handle::{detect_file_type, DecoderHandle, FileType};
 use crate::audio::device::current_device_profile;
 use crate::audio::dsd_engine::DsdDecoderThread;
 use crate::audio::dynamics::DynamicsChain;
+use crate::audio::saturation::Saturator;
 use crate::audio::crossfeed::{Crossfeed, CrossfeedLevel};
 use crate::audio::equalizer::{EqBandSpec, EqParams, Equalizer};
 use crate::audio::fx::SpatialFx;
@@ -239,6 +240,8 @@ pub struct AudioCallbackData {
     convolver: Mutex<Convolver>,
     /// Lightweight compressor + limiter chain.
     dynamics: Mutex<DynamicsChain>,
+    /// Soft saturation (drive/warmth), runs right after the EQ/preamp.
+    saturation: Mutex<Saturator>,
     /// Pitch shifter (semitone offset, tempo preserved). Runs at the head of
     /// the DSP chain. try_lock in callback to avoid blocking.
     pitch_shifter: Mutex<PitchShifter>,
@@ -263,6 +266,8 @@ pub struct AudioCallbackData {
     convolver_enabled: AtomicBool,
     compressor_enabled: AtomicBool,
     limiter_enabled: AtomicBool,
+    upward_compressor_enabled: AtomicBool,
+    saturation_enabled: AtomicBool,
     /// Effective ReplayGain for the current track (dB, f32 bits). New sources
     /// are stamped with this value at spawn; [AudioCommand::SetReplayGain]
     /// updates it live. ReplayGain != 0 dB needs the DSP path, so this also
@@ -423,6 +428,7 @@ impl AudioCallbackData {
             crossfeed: Mutex::new(Crossfeed::new(sample_rate)),
             convolver: Mutex::new(Convolver::new(sample_rate)),
             dynamics: Mutex::new(DynamicsChain::new(sample_rate)),
+            saturation: Mutex::new(Saturator::new(sample_rate)),
             pitch_shifter: Mutex::new(PitchShifter::new(sample_rate, channels)),
             pitch_shift_forces_dsp: AtomicBool::new(false),
             eq_forces_dsp: AtomicBool::new(false),
@@ -431,6 +437,8 @@ impl AudioCallbackData {
             convolver_enabled: AtomicBool::new(false),
             compressor_enabled: AtomicBool::new(false),
             limiter_enabled: AtomicBool::new(false),
+            upward_compressor_enabled: AtomicBool::new(false),
+            saturation_enabled: AtomicBool::new(false),
             replaygain_db: AtomicU32::new(0.0f32.to_bits()),
             replaygain_forces_dsp: AtomicBool::new(false),
             finished_tracks,
@@ -991,6 +999,8 @@ impl AudioCallbackData {
         *self.dynamics.lock() = DynamicsChain::new(sample_rate);
         self.compressor_enabled.store(false, Ordering::Relaxed);
         self.limiter_enabled.store(false, Ordering::Relaxed);
+        self.upward_compressor_enabled.store(false, Ordering::Relaxed);
+        self.saturation.lock().reconfigure_sample_rate(sample_rate);
         let semitones = self.pitch_shifter.lock().semitones();
         let mut shifter = PitchShifter::new(sample_rate, self.channels);
         shifter.set_semitones(semitones);
@@ -1251,6 +1261,33 @@ impl AudioEngineHandle {
             attack_ms,
             release_ms,
             makeup_gain_db,
+        })
+    }
+
+    /// Configure the upward compressor (lifts quiet passages).
+    pub fn set_upward_compressor(
+        &self,
+        enabled: bool,
+        threshold_db: f32,
+        ratio: f32,
+        max_boost_db: f32,
+        release_ms: f32,
+    ) -> Result<(), String> {
+        self.send_command(AudioCommand::SetUpwardCompressor {
+            enabled,
+            threshold_db,
+            ratio,
+            max_boost_db,
+            release_ms,
+        })
+    }
+
+    /// Configure the soft saturation (drive/warmth) stage.
+    pub fn set_saturation(&self, enabled: bool, drive: f32, warmth: f32) -> Result<(), String> {
+        self.send_command(AudioCommand::SetSaturation {
+            enabled,
+            drive,
+            warmth,
         })
     }
 
@@ -4037,6 +4074,16 @@ fn process_dsp_effects(data: &AudioCallbackData, output: &mut [f32], channels: u
             }
         }
     }
+    // Saturation sits right after the EQ/preamp so preamp overs get rounded
+    // off here instead of hard-clipped by the FX/limiter stages.
+    if data.saturation_enabled.load(Ordering::Relaxed) {
+        match data.saturation.try_lock() {
+            Some(mut saturation) => saturation.process(output, channels),
+            None => {
+                data.dsp_skipped_eq.fetch_add(1, Ordering::Relaxed);
+            }
+        }
+    }
     if data.crossfeed_forces_dsp.load(Ordering::Relaxed) {
         match data.crossfeed.try_lock() {
             Some(mut crossfeed) => crossfeed.process(output, channels),
@@ -4063,6 +4110,7 @@ fn process_dsp_effects(data: &AudioCallbackData, output: &mut [f32], channels: u
     }
     if data.compressor_enabled.load(Ordering::Relaxed)
         || data.limiter_enabled.load(Ordering::Relaxed)
+        || data.upward_compressor_enabled.load(Ordering::Relaxed)
     {
         match data.dynamics.try_lock() {
             Some(mut dynamics) => dynamics.process(output, channels),
@@ -4659,6 +4707,34 @@ fn command_processing_loop(
                         );
                         callback_data
                             .compressor_enabled
+                            .store(enabled, Ordering::Relaxed);
+                    }
+                    AudioCommand::SetUpwardCompressor {
+                        enabled,
+                        threshold_db,
+                        ratio,
+                        max_boost_db,
+                        release_ms,
+                    } => {
+                        callback_data.dynamics.lock().set_upward_compressor(
+                            enabled,
+                            threshold_db,
+                            ratio,
+                            max_boost_db,
+                            release_ms,
+                        );
+                        callback_data
+                            .upward_compressor_enabled
+                            .store(enabled, Ordering::Relaxed);
+                    }
+                    AudioCommand::SetSaturation {
+                        enabled,
+                        drive,
+                        warmth,
+                    } => {
+                        callback_data.saturation.lock().set(enabled, drive, warmth);
+                        callback_data
+                            .saturation_enabled
                             .store(enabled, Ordering::Relaxed);
                     }
                     AudioCommand::SetLimiter {

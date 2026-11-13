@@ -21,12 +21,17 @@ Future<void> applyEqualizer(EqualizerState state) async {
   // The fixed-band AudioEffect cannot render an arbitrary parametric curve, so
   // a parametric EQ with enabled bands asks the session manager for the Rust
   // variable-band engine. The engine attaches on the next playback request.
+  // Saturation and the upward compressor only exist in the Rust engine, so
+  // they ask for it the same way.
   final wantsRustForParametricEq =
       state.enabled &&
-      state.mode == EqMode.parametric &&
-      state.parametricBands.any(
-        (band) => band.enabled && band.type != ParametricBandType.allPass,
-      );
+      ((state.mode == EqMode.parametric &&
+              state.parametricBands.any(
+                (band) =>
+                    band.enabled && band.type != ParametricBandType.allPass,
+              )) ||
+          state.saturation.enabled ||
+          state.upwardCompressor.enabled);
   if (EqEngineHint.parametricPeqActive != wantsRustForParametricEq) {
     EqEngineHint.parametricPeqActive = wantsRustForParametricEq;
     unawaited(
@@ -115,6 +120,18 @@ Future<void> applyEqualizer(EqualizerState state) async {
         ceilingDb: state.limiter.ceilingDb,
         releaseMs: state.limiter.releaseMs,
       );
+      await rust_audio.audioSetUpwardCompressor(
+        enabled: false,
+        thresholdDb: state.upwardCompressor.thresholdDb,
+        ratio: state.upwardCompressor.ratio,
+        maxBoostDb: state.upwardCompressor.maxBoostDb,
+        releaseMs: state.upwardCompressor.releaseMs,
+      );
+      await rust_audio.audioSetSaturation(
+        enabled: false,
+        drive: state.saturation.drive,
+        warmth: state.saturation.warmth,
+      );
       await rust_audio.audioSetFx(
         enabled: false,
         balance: state.fx.balance,
@@ -152,6 +169,18 @@ Future<void> applyEqualizer(EqualizerState state) async {
       inputGainDb: state.limiter.inputGainDb,
       ceilingDb: state.limiter.ceilingDb,
       releaseMs: state.limiter.releaseMs,
+    );
+    await rust_audio.audioSetUpwardCompressor(
+      enabled: state.enabled && state.upwardCompressor.enabled,
+      thresholdDb: state.upwardCompressor.thresholdDb,
+      ratio: state.upwardCompressor.ratio,
+      maxBoostDb: state.upwardCompressor.maxBoostDb,
+      releaseMs: state.upwardCompressor.releaseMs,
+    );
+    await rust_audio.audioSetSaturation(
+      enabled: state.enabled && state.saturation.enabled,
+      drive: state.saturation.drive,
+      warmth: state.saturation.warmth,
     );
     await rust_audio.audioSetFx(
       enabled: state.enabled && state.fx.enabled,

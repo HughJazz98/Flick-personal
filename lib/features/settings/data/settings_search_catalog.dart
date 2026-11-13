@@ -680,7 +680,9 @@ List<SettingsSearchPage> buildSettingsSearchCatalog() {
       media,
       LucideIcons.slidersHorizontal,
       (_) => const EqualizerScreen(initialPage: 1),
-      keywords: 'compressor limiter threshold ratio attack release dynamics',
+      keywords:
+          'compressor limiter threshold ratio attack release dynamics '
+          'saturation drive warmth upward lookahead',
     ),
     page(
       'equalizer_fx',

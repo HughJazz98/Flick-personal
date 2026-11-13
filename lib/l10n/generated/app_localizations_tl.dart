@@ -7600,6 +7600,29 @@ class AppLocalizationsTl extends AppLocalizations {
   String get smooth => 'Makinis';
 
   @override
+  String get audioSaturation => 'Saturation';
+
+  @override
+  String get audioSaturationSubtitle =>
+      'Rounds off preamp overs smoothly instead of hard clipping, with optional warmth.';
+
+  @override
+  String get saturationDrive => 'Drive';
+
+  @override
+  String get saturationWarmth => 'Warmth';
+
+  @override
+  String get upwardCompressor => 'Upward compressor';
+
+  @override
+  String get upwardCompressorSubtitle =>
+      'Lifts quiet passages so details come through, leaving loud parts alone.';
+
+  @override
+  String get upwardMaxBoost => 'Max boost';
+
+  @override
   String get smoothsPeaksAndRaisesBodyBefore =>
       'Pinapakinis ang mga peak at pinapalakas ang katawan ng tunog bago saluhin ng limiter ang mga transient.';
 

@@ -7612,6 +7612,29 @@ class AppLocalizationsEs extends AppLocalizations {
   String get smooth => 'Suave';
 
   @override
+  String get audioSaturation => 'Saturación';
+
+  @override
+  String get audioSaturationSubtitle =>
+      'Redondea con suavidad los picos del preamplificador en lugar de recortarlos en seco, con calidez opcional.';
+
+  @override
+  String get saturationDrive => 'Intensidad';
+
+  @override
+  String get saturationWarmth => 'Calidez';
+
+  @override
+  String get upwardCompressor => 'Compresor ascendente';
+
+  @override
+  String get upwardCompressorSubtitle =>
+      'Eleva los pasajes suaves para que se oigan los detalles, sin tocar las partes fuertes.';
+
+  @override
+  String get upwardMaxBoost => 'Realce máximo';
+
+  @override
   String get smoothsPeaksAndRaisesBodyBefore =>
       'Suaviza los picos y realza el cuerpo del sonido antes de que el limitador controle los transitorios.';
 

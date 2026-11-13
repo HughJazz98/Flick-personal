@@ -38,6 +38,7 @@ pub mod opus_decoder;
 pub mod audiotrack_direct;
 pub mod pitch_shifter;
 pub mod resampler;
+pub mod saturation;
 pub mod source;
 pub mod strategy;
 pub mod thread_priority;

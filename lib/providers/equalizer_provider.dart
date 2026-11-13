@@ -132,6 +132,92 @@ class CompressorSettings {
 }
 
 @immutable
+class UpwardCompressorSettings {
+  final bool enabled;
+  final double thresholdDb;
+  final double ratio;
+  final double maxBoostDb;
+  final double releaseMs;
+
+  const UpwardCompressorSettings({
+    this.enabled = false,
+    this.thresholdDb = -36.0,
+    this.ratio = 2.0,
+    this.maxBoostDb = 8.0,
+    this.releaseMs = 300.0,
+  });
+
+  UpwardCompressorSettings copyWith({
+    bool? enabled,
+    double? thresholdDb,
+    double? ratio,
+    double? maxBoostDb,
+    double? releaseMs,
+  }) {
+    return UpwardCompressorSettings(
+      enabled: enabled ?? this.enabled,
+      thresholdDb: thresholdDb ?? this.thresholdDb,
+      ratio: ratio ?? this.ratio,
+      maxBoostDb: maxBoostDb ?? this.maxBoostDb,
+      releaseMs: releaseMs ?? this.releaseMs,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'enabled': enabled,
+    'thresholdDb': thresholdDb,
+    'ratio': ratio,
+    'maxBoostDb': maxBoostDb,
+    'releaseMs': releaseMs,
+  };
+
+  factory UpwardCompressorSettings.fromJson(Map<String, dynamic> json) =>
+      UpwardCompressorSettings(
+        enabled: (json['enabled'] as bool?) ?? false,
+        thresholdDb: (json['thresholdDb'] as num?)?.toDouble() ?? -36.0,
+        ratio: (json['ratio'] as num?)?.toDouble() ?? 2.0,
+        maxBoostDb: (json['maxBoostDb'] as num?)?.toDouble() ?? 8.0,
+        releaseMs: (json['releaseMs'] as num?)?.toDouble() ?? 300.0,
+      );
+}
+
+/// Soft saturation after the EQ/preamp. `drive` lowers the soft-knee
+/// threshold (0 = only overs get rounded), `warmth` adds even harmonics.
+@immutable
+class SaturationSettings {
+  final bool enabled;
+  final double drive; // 0..1
+  final double warmth; // 0..1
+
+  const SaturationSettings({
+    this.enabled = false,
+    this.drive = 0.25,
+    this.warmth = 0.3,
+  });
+
+  SaturationSettings copyWith({bool? enabled, double? drive, double? warmth}) {
+    return SaturationSettings(
+      enabled: enabled ?? this.enabled,
+      drive: drive ?? this.drive,
+      warmth: warmth ?? this.warmth,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'enabled': enabled,
+    'drive': drive,
+    'warmth': warmth,
+  };
+
+  factory SaturationSettings.fromJson(Map<String, dynamic> json) =>
+      SaturationSettings(
+        enabled: (json['enabled'] as bool?) ?? false,
+        drive: (json['drive'] as num?)?.toDouble() ?? 0.25,
+        warmth: (json['warmth'] as num?)?.toDouble() ?? 0.3,
+      );
+}
+
+@immutable
 class LimiterSettings {
   final bool enabled;
   final double inputGainDb;
@@ -407,6 +493,8 @@ class EqualizerState {
 
   final CompressorSettings compressor;
   final LimiterSettings limiter;
+  final UpwardCompressorSettings upwardCompressor;
+  final SaturationSettings saturation;
   final FxSettings fx;
   final ConvolverSettings convolver;
 
@@ -422,6 +510,8 @@ class EqualizerState {
     this.trebleDb = 0.0,
     this.compressor = const CompressorSettings(),
     this.limiter = const LimiterSettings(),
+    this.upwardCompressor = const UpwardCompressorSettings(),
+    this.saturation = const SaturationSettings(),
     this.fx = const FxSettings(),
     this.convolver = const ConvolverSettings(),
   });
@@ -438,6 +528,8 @@ class EqualizerState {
     double? trebleDb,
     CompressorSettings? compressor,
     LimiterSettings? limiter,
+    UpwardCompressorSettings? upwardCompressor,
+    SaturationSettings? saturation,
     FxSettings? fx,
     ConvolverSettings? convolver,
     bool clearActivePresetName = false,
@@ -456,6 +548,8 @@ class EqualizerState {
       trebleDb: trebleDb ?? this.trebleDb,
       compressor: compressor ?? this.compressor,
       limiter: limiter ?? this.limiter,
+      upwardCompressor: upwardCompressor ?? this.upwardCompressor,
+      saturation: saturation ?? this.saturation,
       fx: fx ?? this.fx,
       convolver: convolver ?? this.convolver,
     );
@@ -512,6 +606,8 @@ class EqualizerState {
     'trebleDb': trebleDb,
     'compressor': compressor.toJson(),
     'limiter': limiter.toJson(),
+    'upwardCompressor': upwardCompressor.toJson(),
+    'saturation': saturation.toJson(),
     'fx': fx.toJson(),
     'convolver': convolver.toJson(),
   };
@@ -536,6 +632,8 @@ class EqualizerState {
     final limJson = (json['limiter'] as Map<String, dynamic>?);
     final fxJson = (json['fx'] as Map<String, dynamic>?);
     final convolverJson = (json['convolver'] as Map<String, dynamic>?);
+    final upwardJson = (json['upwardCompressor'] as Map<String, dynamic>?);
+    final saturationJson = (json['saturation'] as Map<String, dynamic>?);
 
     return EqualizerState(
       enabled: (json['enabled'] as bool?) ?? true,
@@ -563,6 +661,12 @@ class EqualizerState {
       limiter: limJson != null
           ? LimiterSettings.fromJson(limJson)
           : const LimiterSettings(),
+      upwardCompressor: upwardJson != null
+          ? UpwardCompressorSettings.fromJson(upwardJson)
+          : const UpwardCompressorSettings(),
+      saturation: saturationJson != null
+          ? SaturationSettings.fromJson(saturationJson)
+          : const SaturationSettings(),
       fx: fxJson != null ? FxSettings.fromJson(fxJson) : const FxSettings(),
       convolver: convolverJson != null
           ? ConvolverSettings.fromJson(convolverJson)
@@ -605,6 +709,18 @@ class EqualizerNotifier extends Notifier<EqualizerState> {
   static const double limiterCeilingMaxDb = 0.0;
   static const double limiterReleaseMinMs = 20.0;
   static const double limiterReleaseMaxMs = 300.0;
+  static const double upwardThresholdMinDb = -60.0;
+  static const double upwardThresholdMaxDb = -10.0;
+  static const double upwardRatioMin = 1.0;
+  static const double upwardRatioMax = 4.0;
+  static const double upwardMaxBoostMinDb = 0.0;
+  static const double upwardMaxBoostMaxDb = 18.0;
+  static const double upwardReleaseMinMs = 50.0;
+  static const double upwardReleaseMaxMs = 1000.0;
+  static const double saturationDriveMin = 0.0;
+  static const double saturationDriveMax = 1.0;
+  static const double saturationWarmthMin = 0.0;
+  static const double saturationWarmthMax = 1.0;
   static const double fxBalanceMin = -1.0;
   static const double fxBalanceMax = 1.0;
   static const double fxTempoMin = 0.5;
@@ -911,10 +1027,96 @@ class EqualizerNotifier extends Notifier<EqualizerState> {
     _syncToAudio();
   }
 
+  void setUpwardCompressorEnabled(bool enabled) {
+    state = state.copyWith(
+      upwardCompressor: state.upwardCompressor.copyWith(enabled: enabled),
+      clearActivePresetName: true,
+    );
+    _syncToAudio();
+  }
+
+  void setUpwardThresholdDb(double thresholdDb) {
+    state = state.copyWith(
+      upwardCompressor: state.upwardCompressor.copyWith(
+        thresholdDb: thresholdDb
+            .clamp(upwardThresholdMinDb, upwardThresholdMaxDb)
+            .toDouble(),
+      ),
+      clearActivePresetName: true,
+    );
+    _syncToAudio();
+  }
+
+  void setUpwardRatio(double ratio) {
+    state = state.copyWith(
+      upwardCompressor: state.upwardCompressor.copyWith(
+        ratio: ratio.clamp(upwardRatioMin, upwardRatioMax).toDouble(),
+      ),
+      clearActivePresetName: true,
+    );
+    _syncToAudio();
+  }
+
+  void setUpwardMaxBoostDb(double maxBoostDb) {
+    state = state.copyWith(
+      upwardCompressor: state.upwardCompressor.copyWith(
+        maxBoostDb: maxBoostDb
+            .clamp(upwardMaxBoostMinDb, upwardMaxBoostMaxDb)
+            .toDouble(),
+      ),
+      clearActivePresetName: true,
+    );
+    _syncToAudio();
+  }
+
+  void setUpwardReleaseMs(double releaseMs) {
+    state = state.copyWith(
+      upwardCompressor: state.upwardCompressor.copyWith(
+        releaseMs: releaseMs
+            .clamp(upwardReleaseMinMs, upwardReleaseMaxMs)
+            .toDouble(),
+      ),
+      clearActivePresetName: true,
+    );
+    _syncToAudio();
+  }
+
+  void setSaturationEnabled(bool enabled) {
+    state = state.copyWith(
+      saturation: state.saturation.copyWith(enabled: enabled),
+      clearActivePresetName: true,
+    );
+    _syncToAudio();
+  }
+
+  void setSaturationDrive(double drive) {
+    state = state.copyWith(
+      saturation: state.saturation.copyWith(
+        drive: drive.clamp(saturationDriveMin, saturationDriveMax).toDouble(),
+      ),
+      clearActivePresetName: true,
+    );
+    _syncToAudio();
+  }
+
+  void setSaturationWarmth(double warmth) {
+    state = state.copyWith(
+      saturation: state.saturation.copyWith(
+        warmth: warmth
+            .clamp(saturationWarmthMin, saturationWarmthMax)
+            .toDouble(),
+      ),
+      clearActivePresetName: true,
+    );
+    _syncToAudio();
+  }
+
   void resetDynamics() {
     state = state.copyWith(
       compressor: const CompressorSettings(),
       limiter: const LimiterSettings(),
+      upwardCompressor: const UpwardCompressorSettings(),
+      saturation: const SaturationSettings(),
       clearActivePresetName: true,
     );
     _syncToAudio();
@@ -1107,6 +1309,9 @@ class EqualizerNotifier extends Notifier<EqualizerState> {
     double trebleDb = 0.0,
     CompressorSettings compressor = const CompressorSettings(),
     LimiterSettings limiter = const LimiterSettings(),
+    UpwardCompressorSettings upwardCompressor =
+        const UpwardCompressorSettings(),
+    SaturationSettings saturation = const SaturationSettings(),
     FxSettings fx = const FxSettings(),
   }) {
     state = state.copyWith(
@@ -1124,6 +1329,8 @@ class EqualizerNotifier extends Notifier<EqualizerState> {
       trebleDb: trebleDb.clamp(gainMinDb, gainMaxDb).toDouble(),
       compressor: compressor,
       limiter: limiter,
+      upwardCompressor: upwardCompressor,
+      saturation: saturation,
       fx: fx,
     );
     ref.read(eqGraphRepaintControllerProvider).bump();
@@ -1181,6 +1388,14 @@ final eqCompressorProvider = Provider<CompressorSettings>((ref) {
 
 final eqLimiterProvider = Provider<LimiterSettings>((ref) {
   return ref.watch(equalizerProvider.select((s) => s.limiter));
+});
+
+final eqUpwardCompressorProvider = Provider<UpwardCompressorSettings>((ref) {
+  return ref.watch(equalizerProvider.select((s) => s.upwardCompressor));
+});
+
+final eqSaturationProvider = Provider<SaturationSettings>((ref) {
+  return ref.watch(equalizerProvider.select((s) => s.saturation));
 });
 
 final eqFxProvider = Provider<FxSettings>((ref) {

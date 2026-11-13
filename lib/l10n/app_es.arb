@@ -9663,6 +9663,34 @@
   "@smooth": {
     "description": "lib/features/settings/screens/visualizer_settings_screen.dart:177"
   },
+  "audioSaturation": "Saturación",
+  "@audioSaturation": {
+    "description": "lib/features/settings/screens/equalizer_screen.dart"
+  },
+  "audioSaturationSubtitle": "Redondea con suavidad los picos del preamplificador en lugar de recortarlos en seco, con calidez opcional.",
+  "@audioSaturationSubtitle": {
+    "description": "lib/features/settings/screens/equalizer_screen.dart"
+  },
+  "saturationDrive": "Intensidad",
+  "@saturationDrive": {
+    "description": "lib/features/settings/screens/equalizer_screen.dart"
+  },
+  "saturationWarmth": "Calidez",
+  "@saturationWarmth": {
+    "description": "lib/features/settings/screens/equalizer_screen.dart"
+  },
+  "upwardCompressor": "Compresor ascendente",
+  "@upwardCompressor": {
+    "description": "lib/features/settings/screens/equalizer_screen.dart"
+  },
+  "upwardCompressorSubtitle": "Eleva los pasajes suaves para que se oigan los detalles, sin tocar las partes fuertes.",
+  "@upwardCompressorSubtitle": {
+    "description": "lib/features/settings/screens/equalizer_screen.dart"
+  },
+  "upwardMaxBoost": "Realce máximo",
+  "@upwardMaxBoost": {
+    "description": "lib/features/settings/screens/equalizer_screen.dart"
+  },
   "smoothsPeaksAndRaisesBodyBefore": "Suaviza los picos y realza el cuerpo del sonido antes de que el limitador controle los transitorios.",
   "@smoothsPeaksAndRaisesBodyBefore": {
     "description": "lib/features/settings/screens/equalizer_screen.dart:3305"

@@ -1,0 +1,130 @@
+# Builds a side-loadable "Flick Mod" APK from this branch.
+#
+# - Installs next to the official Flick (package com.mossapps.flick.mod,
+#   label "Flick Mod"), so the Play/GitHub build and its settings stay intact.
+# - Signs with a key that is reused between runs so new builds install over
+#   old ones. Set the FLICK_MOD_KEYSTORE_B64 secret (base64 of a .jks with
+#   store/key password "flickmod", alias "flickmod") to make that permanent;
+#   otherwise the key lives in the Actions cache, which GitHub evicts after
+#   7 days without a build.
+# - arm64 only, to keep the Rust build short (every current phone is arm64).
+name: Build personal APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [dsp-saturation-lookahead-upward]
+
+concurrency:
+  group: personal-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+
+      - name: Restore signing key
+        id: keycache
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/flick-mod.jks
+          key: flick-mod-keystore-v1
+
+      - name: Prepare signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.FLICK_MOD_KEYSTORE_B64 }}
+        run: |
+          mkdir -p ~/.android
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > ~/.android/flick-mod.jks
+          elif [ ! -f ~/.android/flick-mod.jks ]; then
+            keytool -genkeypair -keystore ~/.android/flick-mod.jks \
+              -storepass flickmod -keypass flickmod -alias flickmod \
+              -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Flick Mod"
+          fi
+          cat > android/key.properties <<EOF
+          storeFile=$HOME/.android/flick-mod.jks
+          storePassword=flickmod
+          keyAlias=flickmod
+          keyPassword=flickmod
+          EOF
+
+      - name: Make it a separate app (Flick Mod)
+        run: |
+          sed -i 's|applicationId = "com.mossapps.flick"|applicationId = "com.mossapps.flick"\n        applicationIdSuffix = ".mod"|' android/app/build.gradle.kts
+          sed -i 's|android:label="Flick"|android:label="Flick Mod"|' android/app/src/main/AndroidManifest.xml
+          grep -n 'applicationIdSuffix' android/app/build.gradle.kts
+
+      - name: Stub google-services.json (not in the public repo; no Firebase SDK is used)
+        run: |
+          if [ ! -f android/app/google-services.json ]; then
+            cat > android/app/google-services.json <<'EOF'
+          {
+            "project_info": {
+              "project_number": "000000000000",
+              "project_id": "flick-mod-stub",
+              "storage_bucket": "flick-mod-stub.appspot.com"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:000000000000:android:0000000000000001",
+                  "android_client_info": { "package_name": "com.mossapps.flick.mod" }
+                },
+                "oauth_client": [],
+                "api_key": [{ "current_key": "stub" }],
+                "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          EOF
+          fi
+
+      - name: pub get + regenerate localizations
+        run: |
+          flutter pub get
+          flutter gen-l10n
+
+      # Informational: the build below fails on its own if anything doesn't
+      # compile, so these don't block the APK.
+      - name: Analyze (errors only)
+        continue-on-error: true
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings lib
+
+      - name: Tests for the changed areas
+        continue-on-error: true
+        run: flutter test test/services/eq_preset_file_service_test.dart test/l10n
+
+      - name: Build APK
+        run: flutter build apk --flavor full --release --target-platform android-arm64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flick-mod-apk
+          path: build/app/outputs/flutter-apk/app-full-release.apk
+          if-no-files-found: error

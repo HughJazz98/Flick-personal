@@ -69,6 +69,20 @@ pub enum AudioCommand {
         release_ms: f32,
         makeup_gain_db: f32,
     },
+    /// Configure the upward compressor (lifts quiet passages).
+    SetUpwardCompressor {
+        enabled: bool,
+        threshold_db: f32,
+        ratio: f32,
+        max_boost_db: f32,
+        release_ms: f32,
+    },
+    /// Configure the soft saturation (drive/warmth) stage.
+    SetSaturation {
+        enabled: bool,
+        drive: f32,
+        warmth: f32,
+    },
     /// Configure limiter settings.
     SetLimiter {
         enabled: bool,

@@ -7517,6 +7517,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get smooth => 'Smooth';
 
   @override
+  String get audioSaturation => 'Saturation';
+
+  @override
+  String get audioSaturationSubtitle =>
+      'Rounds off preamp overs smoothly instead of hard clipping, with optional warmth.';
+
+  @override
+  String get saturationDrive => 'Drive';
+
+  @override
+  String get saturationWarmth => 'Warmth';
+
+  @override
+  String get upwardCompressor => 'Upward compressor';
+
+  @override
+  String get upwardCompressorSubtitle =>
+      'Lifts quiet passages so details come through, leaving loud parts alone.';
+
+  @override
+  String get upwardMaxBoost => 'Max boost';
+
+  @override
   String get smoothsPeaksAndRaisesBodyBefore =>
       'Smooths peaks and raises body before the limiter catches transients.';
 

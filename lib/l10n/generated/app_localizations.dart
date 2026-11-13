@@ -12858,6 +12858,48 @@ abstract class AppLocalizations {
   /// **'Smooth'**
   String get smooth;
 
+  /// lib/features/settings/screens/equalizer_screen.dart
+  ///
+  /// In en, this message translates to:
+  /// **'Saturation'**
+  String get audioSaturation;
+
+  /// lib/features/settings/screens/equalizer_screen.dart
+  ///
+  /// In en, this message translates to:
+  /// **'Rounds off preamp overs smoothly instead of hard clipping, with optional warmth.'**
+  String get audioSaturationSubtitle;
+
+  /// lib/features/settings/screens/equalizer_screen.dart
+  ///
+  /// In en, this message translates to:
+  /// **'Drive'**
+  String get saturationDrive;
+
+  /// lib/features/settings/screens/equalizer_screen.dart
+  ///
+  /// In en, this message translates to:
+  /// **'Warmth'**
+  String get saturationWarmth;
+
+  /// lib/features/settings/screens/equalizer_screen.dart
+  ///
+  /// In en, this message translates to:
+  /// **'Upward compressor'**
+  String get upwardCompressor;
+
+  /// lib/features/settings/screens/equalizer_screen.dart
+  ///
+  /// In en, this message translates to:
+  /// **'Lifts quiet passages so details come through, leaving loud parts alone.'**
+  String get upwardCompressorSubtitle;
+
+  /// lib/features/settings/screens/equalizer_screen.dart
+  ///
+  /// In en, this message translates to:
+  /// **'Max boost'**
+  String get upwardMaxBoost;
+
   /// lib/features/settings/screens/equalizer_screen.dart:3305
   ///
   /// In en, this message translates to:
