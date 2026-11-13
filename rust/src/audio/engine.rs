@@ -3733,38 +3733,71 @@ fn open_android_output_stream(
                         )),
                     }
                 } else {
-                    let mut builder = oboe::AudioStreamBuilder::default()
-                        .set_stereo()
-                        .set_f32()
-                        .set_sample_rate(target_sample_rate as i32)
-                        .set_frames_per_callback(frames_per_callback)
-                        .set_sharing_mode(sharing_mode)
-                        .set_performance_mode(performance_mode)
-                        .set_usage(Usage::Media)
-                        .set_content_type(ContentType::Music)
-                        .set_channel_conversion_allowed(false)
-                        .set_format_conversion_allowed(true)
-                        .set_sample_rate_conversion_quality(if bit_perfect_route {
-                            SampleRateConversionQuality::None
+                    let base_f32_builder = || {
+                        let builder = oboe::AudioStreamBuilder::default()
+                            .set_stereo()
+                            .set_f32()
+                            .set_sample_rate(target_sample_rate as i32)
+                            .set_frames_per_callback(frames_per_callback)
+                            .set_sharing_mode(sharing_mode)
+                            .set_performance_mode(performance_mode)
+                            .set_usage(Usage::Media)
+                            .set_content_type(ContentType::Music)
+                            .set_channel_conversion_allowed(false)
+                            .set_format_conversion_allowed(true)
+                            .set_sample_rate_conversion_quality(if bit_perfect_route {
+                                SampleRateConversionQuality::None
+                            } else {
+                                SampleRateConversionQuality::Medium
+                            })
+                            .set_audio_api(audio_api);
+                        if bit_perfect_route {
+                            builder.set_device_id(selected_device.id)
                         } else {
-                            SampleRateConversionQuality::Medium
-                        })
-                        .set_audio_api(audio_api);
+                            builder
+                        }
+                    };
 
-                    if bit_perfect_route {
-                        builder = builder.set_device_id(selected_device.id);
-                    } else if sharing_mode == SharingMode::Shared {
-                        // Lets effect apps (Sound Beautifier, Wavelet, ...)
-                        // attach to this stream; see effect_session.rs.
-                        builder = builder.set_session_id(SessionId::Allocate);
-                    }
+                    // Lets effect apps (Sound Beautifier, Wavelet, ...) attach
+                    // to this stream; see effect_session.rs. Some HALs refuse
+                    // an allocated session on certain paths, so a failure
+                    // retries the exact same stream without one instead of
+                    // failing the whole engine over to Standard.
+                    let wants_session = !bit_perfect_route && sharing_mode == SharingMode::Shared;
+                    let with_session = if wants_session {
+                        match base_f32_builder()
+                            .set_session_id(SessionId::Allocate)
+                            .set_callback(AndroidOutputCallbackF32::new(
+                                Arc::clone(&callback_data),
+                                event_tx.clone(),
+                            ))
+                            .open_stream()
+                        {
+                            Ok(stream) => Some(stream),
+                            Err(error) => {
+                                log::warn!(
+                                    "[EffectSession] {} shared f32 open with session failed ({}); retrying without",
+                                    audio_api_label(audio_api),
+                                    error
+                                );
+                                None
+                            }
+                        }
+                    } else {
+                        None
+                    };
 
-                    match builder
-                        .set_callback(AndroidOutputCallbackF32::new(
-                            Arc::clone(&callback_data),
-                            event_tx.clone(),
-                        ))
-                        .open_stream()
+                    let opened = match with_session {
+                        Some(stream) => Ok(stream),
+                        None => base_f32_builder()
+                            .set_callback(AndroidOutputCallbackF32::new(
+                                Arc::clone(&callback_data),
+                                event_tx.clone(),
+                            ))
+                            .open_stream(),
+                    };
+
+                    match opened
                     {
                         Ok(stream) => Ok(AndroidManagedStreamKind::F32(stream)),
                         Err(error) => Err(format!(

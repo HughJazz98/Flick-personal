@@ -28,11 +28,28 @@ pub fn announce_close(session: i32) {
     announce(false, session);
 }
 
+/// Runs on its own short-lived thread: the caller is the engine's stream
+/// setup/teardown path, which must never block on, or be unwound by, a JNI
+/// problem. Any panic in here is contained to that thread.
 #[cfg(target_os = "android")]
 fn announce(open: bool, session: i32) {
     if session <= 0 {
         return;
     }
+    let spawned = std::thread::Builder::new()
+        .name("flick-effect-session".into())
+        .spawn(move || {
+            if std::panic::catch_unwind(|| announce_blocking(open, session)).is_err() {
+                log::warn!("[EffectSession] announce panicked for session {session}");
+            }
+        });
+    if let Err(error) = spawned {
+        log::warn!("[EffectSession] could not spawn announce thread: {error}");
+    }
+}
+
+#[cfg(target_os = "android")]
+fn announce_blocking(open: bool, session: i32) {
     let ctx = ndk_context::android_context();
     if ctx.context().is_null() {
         log::warn!("[EffectSession] no Android context; cannot announce session {session}");
