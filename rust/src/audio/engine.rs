@@ -45,7 +45,7 @@ use oboe::{
     AudioApi, AudioDeviceDirection, AudioDeviceInfo, AudioDeviceType, AudioFormat,
     AudioOutputCallback, AudioOutputStreamSafe, AudioStream, AudioStreamAsync, AudioStreamBase,
     AudioStreamSafe, ChannelCount, ContentType, DataCallbackResult, Output, PerformanceMode,
-    SampleRateConversionQuality, SharingMode, Stereo, Usage,
+    SampleRateConversionQuality, SessionId, SharingMode, Stereo, Usage,
 };
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -1838,6 +1838,17 @@ struct AndroidManagedStream {
     active_sharing: &'static str,
     sample_format: &'static str,
     exclusive_error: Option<String>,
+    /// Android audio session announced to third-party effect apps (0 = none).
+    effect_session: i32,
+}
+
+#[cfg(target_os = "android")]
+impl Drop for AndroidManagedStream {
+    fn drop(&mut self) {
+        if self.effect_session > 0 {
+            crate::audio::effect_session::announce_close(self.effect_session);
+        }
+    }
 }
 
 #[cfg(target_os = "android")]
@@ -1865,6 +1876,20 @@ fn read_managed_stream_telemetry<T: AudioStreamSafe>(
 
 #[cfg(target_os = "android")]
 impl AndroidManagedStream {
+    /// Announce the stream's allocated audio session (shared f32 streams only)
+    /// so effect apps such as Sound Beautifier attach to it, as they do with
+    /// ExoPlayer on the Standard engine.
+    fn announce_effect_session(&mut self) {
+        let session = match &self.kind {
+            AndroidManagedStreamKind::F32(s) => s.get_session_id_raw(),
+            _ => 0,
+        };
+        if session > 0 {
+            self.effect_session = session;
+            crate::audio::effect_session::announce_open(session);
+        }
+    }
+
     /// Sample control-thread telemetry from the live stream. Oboe's xrun count
     /// is only meaningful while the stream is running, so the supervisor
     /// refreshes it alongside its restart polling.
@@ -3728,6 +3753,10 @@ fn open_android_output_stream(
 
                     if bit_perfect_route {
                         builder = builder.set_device_id(selected_device.id);
+                    } else if sharing_mode == SharingMode::Shared {
+                        // Lets effect apps (Sound Beautifier, Wavelet, ...)
+                        // attach to this stream; see effect_session.rs.
+                        builder = builder.set_session_id(SessionId::Allocate);
                     }
 
                     match builder
@@ -3872,8 +3901,10 @@ fn open_android_output_stream(
                             active_sharing: sharing_label(actual_sharing),
                             sample_format,
                             exclusive_error,
+                            effect_session: 0,
                         };
                         stream.note_telemetry(&callback_data);
+                        stream.announce_effect_session();
                         return Ok(stream);
                     }
                     Err(error) => {
@@ -3896,8 +3927,10 @@ fn open_android_output_stream(
             active_sharing: fallback_sharing.unwrap_or("Unspecified"),
             sample_format: fallback_format.unwrap_or("f32"),
             exclusive_error: (!exclusive_notes.is_empty()).then(|| exclusive_notes.join(" | ")),
+            effect_session: 0,
         };
         stream.note_telemetry(&callback_data);
+        stream.announce_effect_session();
         return Ok(stream);
     }
 

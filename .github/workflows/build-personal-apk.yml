@@ -125,7 +125,7 @@ jobs:
 
       - name: Tests for the changed areas
         continue-on-error: true
-        run: flutter test test/services/eq_preset_file_service_test.dart test/l10n
+        run: flutter test test/services/eq_preset_file_service_test.dart test/services/rust_audio_service_volume_test.dart test/l10n
 
       # rust/vendor/opus-sys runs bindgen without an Android sysroot, so
       # clang falls back to the runner's glibc headers and fails. Point it at

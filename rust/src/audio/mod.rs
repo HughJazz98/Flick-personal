@@ -28,6 +28,7 @@ pub mod dsd_sas_shim;
 pub mod dsd_native_backend;
 pub mod dsd_native_jni;
 pub mod dynamics;
+pub mod effect_session;
 pub mod engine;
 pub mod equalizer;
 pub mod fx;

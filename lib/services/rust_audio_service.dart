@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flick/src/rust/api/audio_api.dart' as rust_audio;
 import 'package:flick/src/rust/audio/engine.dart' show AudioApiPreference;
@@ -474,11 +475,26 @@ class RustAudioService {
   }
 
   /// Set the volume (0.0 to 2.0; values >1.0 apply extended gain).
+  ///
+  /// [volume] is a linear gain, the same value just_audio/ExoPlayer receives.
+  /// The Rust engine maps its input through a 40 dB curve
+  /// (`gain = 10^(2·(v−1))`), so the same slider position used to be far
+  /// quieter there (70 % → −12 dB instead of −3 dB). Invert that curve so
+  /// both engines play at the same level.
   Future<void> setVolume(double volume) async {
     if (!_initialized) return;
     final clampedVolume = volume.clamp(0.0, 2.0);
     volumeNotifier.value = clampedVolume;
-    await rust_audio.audioSetVolume(volume: clampedVolume);
+    await rust_audio.audioSetVolume(volume: linearToRustVolume(clampedVolume));
+  }
+
+  /// Inverse of the Rust engine's `volume_to_gain` below unity; values above
+  /// 1.0 already map linearly there and pass through unchanged.
+  @visibleForTesting
+  static double linearToRustVolume(double linear) {
+    if (linear >= 1.0) return linear;
+    if (linear <= 0.01) return 0.0; // -40 dB and below: the curve's floor
+    return (1.0 + math.log(linear) / math.ln10 / 2.0).clamp(0.0, 1.0);
   }
 
   /// Set the effective ReplayGain (dB) for the current track and as the

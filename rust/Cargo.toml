@@ -90,3 +90,9 @@ notify = "8.2"
 
 [dev-dependencies]
 hound = "3.5"
+
+# Flick patch of oboe 0.6.1: expose the allocated audio session id (upstream's
+# getter panics on real ids) so third-party effect apps can attach to the
+# Rust engine's output. See rust/vendor/oboe/src/audio_stream_base.rs.
+[patch.crates-io]
+oboe = { path = "vendor/oboe" }
