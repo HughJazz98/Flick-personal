@@ -134,7 +134,7 @@ jobs:
         run: |
           NDK=$(ls -d "$ANDROID_HOME"/ndk/* | sort -V | tail -1)
           echo "Using NDK $NDK"
-          echo "BINDGEN_EXTRA_CLANG_ARGS_aarch64_linux_android=--sysroot=$NDK/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> "$GITHUB_ENV"
+          echo "BINDGEN_EXTRA_CLANG_ARGS_aarch64_linux_android=--sysroot=$NDK/toolchains/llvm/prebuilt/linux-x86_64/sysroot --target=aarch64-linux-android26" >> "$GITHUB_ENV"
 
       - name: Build APK
         run: flutter build apk --flavor full --release --target-platform android-arm64
